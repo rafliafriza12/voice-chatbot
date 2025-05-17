@@ -49,6 +49,51 @@ client = genai.Client(api_key=GOOGLE_API_KEY)
 chat_config = types.GenerateContentConfig(system_instruction=system_instruction)
 history_adapter = TypeAdapter(list[types.Content])
 
+def angka_ke_teks(num):
+    satuan = ['', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan']
+    belasan = ['sepuluh', 'sebelas', 'dua belas', 'tiga belas', 'empat belas', 'lima belas', 
+               'enam belas', 'tujuh belas', 'delapan belas', 'sembilan belas']
+    puluhan = ['', 'sepuluh', 'dua puluh', 'tiga puluh', 'empat puluh', 'lima puluh', 
+               'enam puluh', 'tujuh puluh', 'delapan puluh', 'sembilan puluh']
+    
+    if 0 <= num < 10:
+        return satuan[num]
+    elif 10 <= num < 20:
+        return belasan[num - 10]
+    elif 20 <= num < 100:
+        return puluhan[num // 10] + (' ' + satuan[num % 10] if num % 10 != 0 else '')
+    elif 100 <= num < 1000:
+        if num == 100:
+            return 'seratus'
+        else:
+            return ('seratus' if num // 100 == 1 else satuan[num // 100] + ' ratus') + \
+                  ('' if num % 100 == 0 else ' ' + angka_ke_teks(num % 100))
+    elif 1000 <= num < 1000000:
+        if num == 1000:
+            return 'seribu'
+        else:
+            return ('seribu' if num // 1000 == 1 else satuan[num // 1000] + ' ribu') + \
+                  ('' if num % 1000 == 0 else ' ' + angka_ke_teks(num % 1000))
+    elif 1000000 <= num < 1000000000:
+        return satuan[num // 1000000] + ' juta' + \
+              ('' if num % 1000000 == 0 else ' ' + angka_ke_teks(num % 1000000))
+    elif 1000000000 <= num < 1000000000000:
+        return satuan[num // 1000000000] + ' milyar' + \
+              ('' if num % 1000000000 == 0 else ' ' + angka_ke_teks(num % 1000000000))
+    else:
+        return str(num)  
+
+def ubah_angka_dalam_string(input_string):
+    import re
+    
+    def ganti_angka(match):
+        angka = int(match.group(0))
+        return angka_ke_teks(angka)
+    
+    pattern = r'\b\d+\b'
+    hasil = re.sub(pattern, ganti_angka, input_string)
+    
+    return hasil
 # Fungsi untuk menyimpan/memuat riwayat chat
 def export_chat_history(chat) -> str:
     return history_adapter.dump_json(chat.get_history()).decode("utf-8")
@@ -86,6 +131,7 @@ def generate_response(prompt: str) -> str:
     try:
         response = chat.send_message(prompt)
         save_chat_history(chat)
-        return response.text.strip()
+        result = ubah_angka_dalam_string(response.text.strip())
+        return result
     except Exception as e:
         return f"[ERROR] {str(e)}"
